@@ -19,19 +19,24 @@ class Plane:
         self.image = pygame.transform.scale(pygame.image.load('images/plane.png'), self.image_size)
         self.velocity_down = -5
         self.velocity_up = 0
+        self.score = 1
 
-    def update(self):
+    def move(self):
         if self.velocity_up != 0:
             self.velocity_up -= 1
         self.velocity_down *= 1.04  # plane accelerates as it falls
         self.y_position -= (self.velocity_up + self.velocity_down)
+        if self.y_position + 40 > screen_height:
+            self.y_position = screen_height - 40
+        if self.y_position < 0:
+            self.y_position = 0
 
     def jump(self):
         self.velocity_down = -5
         self.velocity_up = 20
 
     def draw(self):
-        self.update()
+        self.move()
         screen.blit(self.image, (self.x_position, self.y_position))
 
     def get_rect(self):
@@ -46,7 +51,7 @@ class Towers:
         self.top_tower = pygame.transform.flip(pygame.image.load('images/tower.png').convert_alpha(), 0, 1)
         self.bottom_tower = pygame.image.load('images/tower.png').convert_alpha()
         self.height = 425
-        self.gap = 175
+        self.gap = 210
 
     def set_top_tower_y_position(self):
         self.top_tower_y_position = random.randint(-400, -50)
@@ -74,6 +79,9 @@ class Towers:
 def draw_background():
     screen.blit(pygame.image.load('images/background.png'), (0, 0))
 
+def plane_has_passed(plane : Plane, towers : Towers):
+    if towers.x_position == plane.x_position:
+        plane.score += 1
 
 def init():
     global screen_height, screen_width, screen, clock, background_song, font, white
@@ -86,7 +94,7 @@ def init():
     font = pygame.font.SysFont("Comic Sans MS", 50)
     white = (255, 255, 255)
     pygame.display.set_caption('911 Flappy Bird')
-    # pygame.mixer.Sound.play(background_song, -1)
+    pygame.mixer.Sound.play(background_song, -1)
     draw_background()
 
 
@@ -100,7 +108,7 @@ def start_screen():
                 exit(0)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if button.collidepoint(event.pos):
-                    return True
+                    run()
         pygame.draw.rect(screen, (0, 0, 200), button)  # button is blue
         screen.blit(title, (225, 100))  # draws title in center
         screen.blit(button_text, (320, 250))  # draws text in button
@@ -121,18 +129,36 @@ def run():
         plane_rect = plane.get_rect()
         tower_rects = [towers.get_top_tower_rect(), towers.get_bottom_tower_rect()]
         if plane_rect.collidelist(tower_rects) != -1:
-            print('x')
+            closing_screen(plane.score)
         plane.draw()
+        plane_has_passed(plane, towers)
         towers.draw()
         towers.move()
         pygame.display.flip()
         clock.tick(60)
 
 
+def closing_screen(score):
+    loss_text = font.render("You lost with " + str(score) + " point(s).", True, white)
+    button_text = font.render('Replay', True, white)
+    button = pygame.Rect(290, 255, 200, 70)  # centers the button
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit(0)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if button.collidepoint(event.pos):
+                    run()
+        draw_background()
+        screen.blit(loss_text, (150, 100))
+        pygame.draw.rect(screen, (0, 0, 200), button)
+        screen.blit(button_text, (315, 250))
+        pygame.display.flip()
+
+
 def main():
     init()
-    if start_screen():
-        run()
+    start_screen()
 
 
 if __name__ == '__main__':
